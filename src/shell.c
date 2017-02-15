@@ -42,7 +42,7 @@ void closePipes(int p[NBPIPES][2], int nbPipes) {
 }
 int main() {
   while (1) {
-    struct cmdline *l;
+    struct cmdline *l = NULL;
     int seq_len = 0,
         out = -1,
         in  = -1,
@@ -50,8 +50,13 @@ int main() {
 
     int p[NBPIPES][2];
     pid_t pid;
-
-    printf("> ");
+    
+    if(l) {
+      printf("(%i)> ", l->bg);
+    }
+    else {
+      printf("> ");
+    }
     l = readcmd();
     /* If input stream closed, normal termination */
     if (!l) {
@@ -127,8 +132,10 @@ int main() {
         }
         else {
           close(p[i][1]); 
-          for (int i = 0; l->seq[i] != 0; ++i) {
-            waitpid(-1, &status, 0); // TODO: Récupération/Gestion des status
+          if (l->bg == 0) {
+            for (int i = 0; l->seq[i] != 0; ++i) {
+              waitpid(-1, &status, 0); // TODO: Récupération/Gestion des status
+            }
           }
         }
       }
