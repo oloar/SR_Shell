@@ -17,6 +17,7 @@ struct cmdline {
 	char *in;	/* If not null : name of file for input redirection. */
 	char *out;	/* If not null : name of file for output redirection. */
 	char ***seq;	/* See comment below */
+	int bg;	/* If 1 execute process as job */
 };
 
 /* Field seq of struct cmdline :
