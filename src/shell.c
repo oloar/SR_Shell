@@ -44,6 +44,8 @@ int main() {
   while (1) {
     struct cmdline *l;
     int seq_len = 0,
+        out = -1,
+        in  = -1,
         status;
 
     int p[NBPIPES][2];
@@ -63,6 +65,22 @@ int main() {
       continue;
     }
 
+    if(l->in) {
+      in = open(l->in, O_RDONLY);
+      if (in == -1) {
+        fprintf(stderr, "Erreur lors de l'ouverture du fichier %s\n", l->in);
+        exit(2);
+      }
+    }
+
+    if(l->out) {
+      out = open(l->out, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+      if (out == -1) {
+        fprintf(stderr, "Erreur lors de l'ouverture du fichier %s\n", l->out);
+        exit(2);
+      }
+    }
+
     seq_len = seqLength(l->seq);
     if (seq_len > 1) {
       for (int i = 0; i < seq_len - 1; ++i){
@@ -78,15 +96,29 @@ int main() {
         if (pid == 0) {
           if (seq_len > 1) {
             if (i == 0) {
+              if(in > 0) {
+                dup2(in, STDIN_FILENO);
+              }
               dup2(p[i][1], STDOUT_FILENO);
             }
             else if (i == seq_len - 1){
+              if(out > 0) {
+                dup2(out, STDOUT_FILENO);
+              }
               dup2(p[i-1][0], STDIN_FILENO);
             }
             else {
               dup2(p[i-1][0], STDIN_FILENO);
               dup2(p[i][1], STDOUT_FILENO);
             }
+          }
+          else {
+              if(in > 0) {
+                dup2(in, STDIN_FILENO);
+              }
+              if(out > 0) {
+                dup2(out, STDOUT_FILENO);
+              }
           }
           
           closePipes(p, seq_len);
