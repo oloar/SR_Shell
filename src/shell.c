@@ -40,6 +40,7 @@ void closePipes(int p[NBPIPES][2], int nbPipes) {
     close(p[i][1]);
   }
 }
+
 int main() {
   while (1) {
     struct cmdline *l = NULL;
@@ -50,13 +51,8 @@ int main() {
 
     int p[NBPIPES][2];
     pid_t pid;
-    
-    if(l) {
-      printf("(%i)> ", l->bg);
-    }
-    else {
-      printf("> ");
-    }
+
+    printf("> ");
     l = readcmd();
     /* If input stream closed, normal termination */
     if (!l) {
@@ -70,7 +66,7 @@ int main() {
       continue;
     }
 
-    if(l->in) {
+    if(l->in) { // input redirect
       in = open(l->in, O_RDONLY);
       if (in == -1) {
         fprintf(stderr, "Erreur lors de l'ouverture du fichier %s\n", l->in);
@@ -78,7 +74,7 @@ int main() {
       }
     }
 
-    if(l->out) {
+    if(l->out) { // output redirect
       out = open(l->out, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
       if (out == -1) {
         fprintf(stderr, "Erreur lors de l'ouverture du fichier %s\n", l->out);
@@ -87,7 +83,7 @@ int main() {
     }
 
     seq_len = seqLength(l->seq);
-    if (seq_len > 1) {
+    if (seq_len > 1) { // Open all pipes if there are some
       for (int i = 0; i < seq_len - 1; ++i){
         xPipe(p[i]);
       }
@@ -96,29 +92,29 @@ int main() {
     /* Execute each command of the pipe */
     for (int i=0; l->seq[i]!=0; i++) {
       char **cmd = l->seq[i];
-      if (strcmp(cmd[0],"exit")){
+      if (strcmp(cmd[0],"exit")){ // Implements the exit function
         pid = fork();
-        if (pid == 0) {
-          if (seq_len > 1) {
-            if (i == 0) {
-              if(in > 0) {
+        if (pid == 0) { // Child
+          if (seq_len > 1) { // Pipes
+            if (i == 0) { // first command only output to pipe
+              if(in > 0) { // input redirect if needed
                 dup2(in, STDIN_FILENO);
               }
               dup2(p[i][1], STDOUT_FILENO);
             }
-            else if (i == seq_len - 1){
-              if(out > 0) {
+            else if (i == seq_len - 1){ // last command only input from pipe.
+              if(out > 0) { // output redirect if needed
                 dup2(out, STDOUT_FILENO);
               }
               dup2(p[i-1][0], STDIN_FILENO);
             }
-            else {
+            else { // others command input from pipe, output to pipe
               dup2(p[i-1][0], STDIN_FILENO);
               dup2(p[i][1], STDOUT_FILENO);
             }
           }
-          else {
-              if(in > 0) {
+          else { // If no pipe
+              if(in > 0) { 
                 dup2(in, STDIN_FILENO);
               }
               if(out > 0) {
@@ -131,10 +127,11 @@ int main() {
           exit(0); // Exit if cmd[0] is not a  correct shell command
         }
         else {
-          close(p[i][1]); 
+          close(p[i][1]);
+
           if (l->bg == 0) {
             for (int i = 0; l->seq[i] != 0; ++i) {
-              waitpid(-1, &status, 0); // TODO: Récupération/Gestion des status
+              waitpid(-1, &status, 0);
             }
           }
         }
